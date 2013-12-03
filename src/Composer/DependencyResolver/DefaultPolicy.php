@@ -16,6 +16,7 @@ use Composer\Package\PackageInterface;
 use Composer\Package\AliasPackage;
 use Composer\Package\BasePackage;
 use Composer\Package\LinkConstraint\VersionConstraint;
+use Composer\Util\UserFunc;
 
 /**
  * @author Nils Adermann <naderman@naderman.de>
@@ -79,7 +80,37 @@ class DefaultPolicy implements PolicyInterface
             $literals = $this->pruneRemoteAliases($pool, $literals);
         }
 
-        $selected = call_user_func_array('array_merge', $packages);
+        $func = 'array_merge';
+        $numArgs = count($packages);        
+        if ($numArgs <= 9) {
+            // make a 0-indexed array out of params.
+            // its not documented behaviour for call_user_func_array 
+            // but Composer relies on it in e.g. DefaultPolicy
+            $args0 = array();
+            foreach($packages as $package) {
+                $args0[] = $package;
+            }
+            
+            // call the func directly for better performance
+            switch ($numArgs) {
+                case 0: $selected = $func(); break;
+                case 1: $selected = $func($args0[0]); break;
+                case 2: $selected = $func($args0[0], $args0[1]); break;
+                case 3: $selected = $func($args0[0], $args0[1], $args0[2]); break;
+                case 4: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3]); break;
+                case 5: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4]); break;
+                case 6: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4], $args0[5]); break;
+                case 7: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4], $args0[5], $args0[6]); break;
+                case 8: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4], $args0[5], $args0[6], $args0[7]); break;
+                case 9: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4], $args0[5], $args0[6], $args0[7], $args0[8]); break;
+                default: throw new IllegalStateException(sprintf('Expected at most 9 args, got "%s"', $numArgs));
+            }
+            unset($args0);
+        } else {
+            // call_user_func_array is faster when more arguments are in the game
+            $selected = call_user_func_array($func, $packages);        
+        }
+        
 
         // now sort the result across all packages to respect replaces across packages
         usort($selected, function ($a, $b) use ($policy, $pool, $installedMap, $requiredPackage) {
