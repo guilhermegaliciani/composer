@@ -80,37 +80,37 @@ class DefaultPolicy implements PolicyInterface
             $literals = $this->pruneRemoteAliases($pool, $literals);
         }
 
-        $func = 'array_merge';
-        $numArgs = count($packages);        
+        if (!$packages) {
+            return array();
+        }
+
+        $numArgs = count($packages);
         if ($numArgs <= 9) {
             // make a 0-indexed array out of params.
-            // its not documented behaviour for call_user_func_array 
+            // its not documented behaviour for call_user_func_array
             // but Composer relies on it in e.g. DefaultPolicy
-            $args0 = array();
-            foreach($packages as $package) {
-                $args0[] = $package;
-            }
-            
+            $args = array_values($packages);
+
             // call the func directly for better performance
             switch ($numArgs) {
-                case 0: $selected = $func(); break;
-                case 1: $selected = $func($args0[0]); break;
-                case 2: $selected = $func($args0[0], $args0[1]); break;
-                case 3: $selected = $func($args0[0], $args0[1], $args0[2]); break;
-                case 4: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3]); break;
-                case 5: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4]); break;
-                case 6: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4], $args0[5]); break;
-                case 7: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4], $args0[5], $args0[6]); break;
-                case 8: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4], $args0[5], $args0[6], $args0[7]); break;
-                case 9: $selected = $func($args0[0], $args0[1], $args0[2], $args0[3], $args0[4], $args0[5], $args0[6], $args0[7], $args0[8]); break;
+                case 0: $selected = array_merge(); break;
+                case 1: $selected = array_merge($args[0]); break;
+                case 2: $selected = array_merge($args[0], $args[1]); break;
+                case 3: $selected = array_merge($args[0], $args[1], $args[2]); break;
+                case 4: $selected = array_merge($args[0], $args[1], $args[2], $args[3]); break;
+                case 5: $selected = array_merge($args[0], $args[1], $args[2], $args[3], $args[4]); break;
+                case 6: $selected = array_merge($args[0], $args[1], $args[2], $args[3], $args[4], $args[5]); break;
+                case 7: $selected = array_merge($args[0], $args[1], $args[2], $args[3], $args[4], $args[5], $args[6]); break;
+                case 8: $selected = array_merge($args[0], $args[1], $args[2], $args[3], $args[4], $args[5], $args[6], $args[7]); break;
+                case 9: $selected = array_merge($args[0], $args[1], $args[2], $args[3], $args[4], $args[5], $args[6], $args[7], $args[8]); break;
                 default: throw new IllegalStateException(sprintf('Expected at most 9 args, got "%s"', $numArgs));
             }
-            unset($args0);
+            unset($args, $numArgs);
         } else {
             // call_user_func_array is faster when more arguments are in the game
-            $selected = call_user_func_array($func, $packages);        
+            $selected = call_user_func_array('array_merge', $packages);
         }
-        
+        unset($packages);
 
         // now sort the result across all packages to respect replaces across packages
         usort($selected, function ($a, $b) use ($policy, $pool, $installedMap, $requiredPackage) {
