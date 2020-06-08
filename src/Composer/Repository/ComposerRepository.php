@@ -318,7 +318,7 @@ class ComposerRepository extends ArrayRepository implements ConfigurableReposito
         return $names;
     }
 
-    public function loadPackages(array $packageNameMap, array $acceptableStabilities, array $stabilityFlags)
+    public function loadPackages(array $packageNameMap, array $acceptableStabilities, array $stabilityFlags, array $alreadyLoaded = array())
     {
         // this call initializes loadRootServerFile which is needed for the rest below to work
         $hasProviders = $this->hasProviders();
@@ -378,7 +378,7 @@ class ComposerRepository extends ArrayRepository implements ConfigurableReposito
                 }
             }
 
-            $result = $this->loadAsyncPackages($packageNameMap, $acceptableStabilities, $stabilityFlags);
+            $result = $this->loadAsyncPackages($packageNameMap, $acceptableStabilities, $stabilityFlags, $alreadyLoaded);
             $packages = array_merge($packages, $result['packages']);
             $namesFound = array_merge($namesFound, $result['namesFound']);
         }
@@ -657,7 +657,7 @@ class ComposerRepository extends ArrayRepository implements ConfigurableReposito
     /**
      * @param array $packageNames array of package name => ConstraintInterface|null - if a constraint is provided, only packages matching it will be loaded
      */
-    private function loadAsyncPackages(array $packageNames, array $acceptableStabilities = null, array $stabilityFlags = null)
+    private function loadAsyncPackages(array $packageNames, array $acceptableStabilities = null, array $stabilityFlags = null, array $alreadyLoaded = array())
     {
         $this->loadRootServerFile();
 
@@ -696,7 +696,7 @@ class ComposerRepository extends ArrayRepository implements ConfigurableReposito
             }
 
             $promises[] = $this->asyncFetchFile($url, $cacheKey, $lastModified)
-                ->then(function ($response) use (&$packages, &$namesFound, $contents, $realName, $constraint, $repo, $acceptableStabilities, $stabilityFlags) {
+                ->then(function ($response) use (&$packages, &$namesFound, $contents, $realName, $constraint, $repo, $acceptableStabilities, $stabilityFlags, $alreadyLoaded) {
                     if (true === $response) {
                         $response = $contents;
                     }
@@ -719,6 +719,11 @@ class ComposerRepository extends ArrayRepository implements ConfigurableReposito
                         } elseif ($version['version_normalized'] === VersionParser::DEV_MASTER_ALIAS) {
                             // handling of existing repos which need to remain composer v1 compatible, in case the version_normalized contained VersionParser::DEV_MASTER_ALIAS, we renormalize it
                             $version['version_normalized'] = $repo->versionParser->normalize($version['version']);
+                        }
+
+                        // avoid loading packages which have already been loaded
+                        if (isset($alreadyLoaded[$realName][$version['version_normalized']])) {
+                            continue;
                         }
 
                         if ($repo->isVersionAcceptable($constraint, $realName, $version, $acceptableStabilities, $stabilityFlags)) {
