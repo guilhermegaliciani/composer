@@ -76,7 +76,7 @@ jobs:
         with:
           coverage: "none"
           extensions: "intl, zip"
-          ini-values: "memory_limit=-1, phar.readonly=0"
+          ini-values: "memory_limit=-1, phar.readonly=0, pcre.jit=0"
           php-version: "${{ matrix.php-version }}"
           tools: composer
 
